@@ -15,8 +15,6 @@ import {IQuoter} from "./interfaces/IQuoter.sol";
 contract VolatilityFeesHook is BaseHook {
     using LPFeeLibrary for uint24;
 
-    uint256 public constant HIGH_VOLATILITY_TRIGGER = 1400; // 14%
-    uint256 public constant MEDIUM_VOLATILITY_TRIGGER = 1000; // 10%
     uint24 public constant HIGH_VOLATILITY_FEE = 10000; // 1%
     uint24 public constant MEDIUM_VOLATILITY_FEE = 3000; // 0.3%
     uint24 public constant LOW_VOLATILITY_FEE = 500; // 0.05%
@@ -66,6 +64,9 @@ contract VolatilityFeesHook is BaseHook {
         onlyPoolManager
         returns (bytes4, BeforeSwapDelta, uint24)
     {
+        try poolManager.unlock("") {} catch {
+            revert MustUseDynamicFee();
+        }
         // user needs to provide quoter address, volatility calculator address, bool for payImmediately and bool for refundImmediately
         (address quoter_address, address volatility_contract_address, bool payImmediately, bool refundImmediately) = parseHookData(hookData);
 
@@ -83,15 +84,15 @@ contract VolatilityFeesHook is BaseHook {
             }));
             sqrtPriceX96After = _sqrtPriceX96After;
         } else {
-            (int128[] memory deltaAmounts, uint160 _sqrtPriceX96After, uint32 initializedTicksLoaded) = quoter.quoteExactOutputSingle(IQuoter.QuoteExactSingleParams({
-                poolKey: key,
-                zeroForOne: params.zeroForOne,
-                exactAmount: uint(params.amountSpecified),
-                hookData: "",
-                recipient: address(0),
-                sqrtPriceLimitX96: params.sqrtPriceLimitX96
-            }));
-            sqrtPriceX96After = _sqrtPriceX96After;
+            // (int128[] memory deltaAmounts, uint160 _sqrtPriceX96After, uint32 initializedTicksLoaded) = quoter.quoteExactOutputSingle(IQuoter.QuoteExactSingleParams({
+            //     poolKey: key,
+            //     zeroForOne: params.zeroForOne,
+            //     exactAmount: uint(params.amountSpecified),
+            //     hookData: "",
+            //     recipient: address(0),
+            //     sqrtPriceLimitX96: params.sqrtPriceLimitX96
+            // }));
+            // sqrtPriceX96After = _sqrtPriceX96After;
         }
         IVolatilityContract volatilityManager = IVolatilityContract(volatility_contract_address);
 
@@ -107,20 +108,21 @@ contract VolatilityFeesHook is BaseHook {
             if (payImmediately) {
                 // pay the fee immediately
                 return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, (BASE_FEE + HIGH_VOLATILITY_FEE) | LPFeeLibrary.OVERRIDE_FEE_FLAG);
-            } else {
-                // offload to EL
-                return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
             }
+            // else {
+            //     // offload to EL
+            //     return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
+            // }
         }
-        if (newVolatility < currentVolatility) {
-            if (refundImmediately) {
-                // refund the fee immediately
-                return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, (BASE_FEE - LOW_VOLATILITY_FEE) | LPFeeLibrary.OVERRIDE_FEE_FLAG);
-            } else {
-                // offload to Brevis
-                return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
-            }
-        }
+        // if (newVolatility < currentVolatility) {
+        //     if (refundImmediately) {
+        //         // refund the fee immediately
+        //         return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, (BASE_FEE - LOW_VOLATILITY_FEE) | LPFeeLibrary.OVERRIDE_FEE_FLAG);
+        //     } else {
+        //         // offload to Brevis
+        //         return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
+        //     }
+        // }
     }
 
     function parseHookData(

@@ -14,6 +14,8 @@ import {IQuoter} from "../interfaces/IQuoter.sol";
 import {PoolTicksCounter} from "../libraries/PoolTicksCounter.sol";
 import {PathKey, PathKeyLibrary} from "v4-periphery/src/libraries/PathKey.sol";
 import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
+import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
+import {Pool} from "@uniswap/v4-core/src/libraries/Pool.sol";
 
 contract Quoter is IQuoter, IUnlockCallback {
     using Hooks for IHooks;
@@ -314,6 +316,20 @@ contract Quoter is IQuoter, IUnlockCallback {
         uint160 sqrtPriceLimitX96,
         bytes calldata hookData
     ) private returns (BalanceDelta deltas, uint160 sqrtPriceX96After, int24 tickAfter) {
+        // PoolId id = poolKey.toId();
+        // Pool.State storage pool = manager._getPool(id);
+        // pool.checkPoolInitialized();
+
+        // deltas = pool.swap(
+        //                 Pool.SwapParams({
+        //                     tickSpacing: poolKey.tickSpacing,
+        //                     zeroForOne: zeroForOne,
+        //                     amountSpecified: amountSpecified,
+        //                     sqrtPriceLimitX96: _sqrtPriceLimitOrDefault(sqrtPriceLimitX96, zeroForOne),
+        //                     lpFeeOverride: pool.slot0.lpFee
+        //                 }),
+        //                 zeroForOne ? poolKey.currency0 : poolKey.currency1 // input token
+        //             );
         deltas = manager.swap(
             poolKey,
             IPoolManager.SwapParams({
