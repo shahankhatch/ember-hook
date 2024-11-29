@@ -10,10 +10,20 @@ import {LPFeeLibrary} from "v4-core/libraries/LPFeeLibrary.sol";
 import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "v4-core/types/BeforeSwapDelta.sol";
 import {IVolatilityContract} from "./interfaces/IVolatilityContract.sol";
 import {IQuoter} from "./interfaces/IQuoter.sol";
+import {StateLibrary} from "v4-core/libraries/StateLibrary.sol";
+import {BalanceDeltaLibrary} from "v4-core/types/BalanceDelta.sol";
+import {Pool} from "v4-core/libraries/Pool.sol";
+import {PoolId} from "v4-core/types/PoolId.sol";
+import {PoolManager} from "v4-core/PoolManager.sol";
 
 
 contract VolatilityFeesHook is BaseHook {
     using LPFeeLibrary for uint24;
+    using StateLibrary for PoolKey;
+    using BalanceDeltaLibrary for BalanceDelta;
+    using Pool for *;
+
+    PoolManager manager;
 
     uint24 public constant HIGH_VOLATILITY_FEE = 10000; // 1%
     uint24 public constant MEDIUM_VOLATILITY_FEE = 3000; // 0.3%
@@ -25,7 +35,9 @@ contract VolatilityFeesHook is BaseHook {
     error MustUseDynamicFee();
 
     // Initialize BaseHook parent contract in the constructor
-    constructor(IPoolManager _poolManager) BaseHook(_poolManager) {}
+    constructor(IPoolManager _poolManager) BaseHook(_poolManager) {
+        manager = PoolManager(_poolManager);
+    }
 
     // Required override function for BaseHook to let the PoolManager know which hooks are implemented
     function getHookPermissions()
@@ -64,56 +76,38 @@ contract VolatilityFeesHook is BaseHook {
         onlyPoolManager
         returns (bytes4, BeforeSwapDelta, uint24)
     {
-        try poolManager.unlock("") {} catch {
-            revert MustUseDynamicFee();
-        }
-        // user needs to provide quoter address, volatility calculator address, bool for payImmediately and bool for refundImmediately
-        (address quoter_address, address volatility_contract_address, bool payImmediately, bool refundImmediately) = parseHookData(hookData);
+        // NOTE: accessing swap directly on pool is disallowed as it's internal; it returns a struct which is disallowed in non-internal functions
+        // PoolId id = key.toId();
+        // Pool.State storage pool = manager._pools[id]; // this access is disallowed
+        // _getPool is also disallowed
+        // pool._swap(params);
 
-        // get the simulated swap resultant price
-        IQuoter quoter = IQuoter(quoter_address);
-        uint160 sqrtPriceX96After;
-        if (params.amountSpecified < 0) {
-            (int128[] memory deltaAmounts, uint160 _sqrtPriceX96After, uint32 initializedTicksLoaded) = quoter.quoteExactInputSingle(IQuoter.QuoteExactSingleParams({
-                poolKey: key,
-                zeroForOne: params.zeroForOne,
-                exactAmount: uint(-params.amountSpecified),
-                hookData: "",
-                recipient: address(0),
-                sqrtPriceLimitX96: params.sqrtPriceLimitX96
-            }));
-            sqrtPriceX96After = _sqrtPriceX96After;
-        } else {
-            // (int128[] memory deltaAmounts, uint160 _sqrtPriceX96After, uint32 initializedTicksLoaded) = quoter.quoteExactOutputSingle(IQuoter.QuoteExactSingleParams({
-            //     poolKey: key,
-            //     zeroForOne: params.zeroForOne,
-            //     exactAmount: uint(params.amountSpecified),
-            //     hookData: "",
-            //     recipient: address(0),
-            //     sqrtPriceLimitX96: params.sqrtPriceLimitX96
-            // }));
-            // sqrtPriceX96After = _sqrtPriceX96After;
-        }
+        // Pool is a library, try to take it from there when we call ourselves a Pool library instance using `using Pool for *;`
+        .swap();
+
+        // user needs to provide volatility calculator address, bool for payImmediately and bool for refundImmediately
+        (address volatility_contract_address, bool payImmediately, bool refundImmediately) = parseHookData(hookData);
+
         IVolatilityContract volatilityManager = IVolatilityContract(volatility_contract_address);
 
         // get the current volatility
         uint256 currentVolatility = volatilityManager.lastVolatility();
         // simulate the volatility for doing the swap
-        uint256 newVolatility = volatilityManager.simulateSwap(sqrtPriceX96After);
+        // uint256 newVolatility = volatilityManager.simulateSwap(sqrtPriceX96After);
 
         // check user hook params: if vol is higher, either swap immediately with higher fee (true) or offload to EL (false)
         // check user hook params: if vol is lower, either refund immediately (true) or offload to Brevis (false)
         // if the new volatility is higher, increase the fee
-        if (newVolatility > currentVolatility) {
-            if (payImmediately) {
-                // pay the fee immediately
-                return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, (BASE_FEE + HIGH_VOLATILITY_FEE) | LPFeeLibrary.OVERRIDE_FEE_FLAG);
-            }
+        // if (newVolatility > currentVolatility) {
+        //     if (payImmediately) {
+        //         // pay the fee immediately
+        //         return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, (BASE_FEE + HIGH_VOLATILITY_FEE) | LPFeeLibrary.OVERRIDE_FEE_FLAG);
+        //     }
             // else {
             //     // offload to EL
             //     return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
             // }
-        }
+        // }
         // if (newVolatility < currentVolatility) {
         //     if (refundImmediately) {
         //         // refund the fee immediately
@@ -127,18 +121,23 @@ contract VolatilityFeesHook is BaseHook {
 
     function parseHookData(
         bytes calldata data
-    ) public pure returns (address quoter_address, address volatility_contract_address, bool payImmediately, bool refundImmediately) {
-        return abi.decode(data, (address, address, bool, bool));
+    ) public pure returns (address volatility_contract_address, bool payImmediately, bool refundImmediately) {
+        return abi.decode(data, (address, bool, bool));
     }
 
     function afterSwap(
         address,
-        PoolKey calldata,
+        PoolKey calldata key,
         IPoolManager.SwapParams memory params,
-        BalanceDelta,
+        BalanceDelta delta,
         bytes calldata
     ) external override returns (bytes4, int128) {
-		// TODO
+        int128 amount0 = BalanceDeltaLibrary.amount0(delta);
+        int128 amount1 = BalanceDeltaLibrary.amount1(delta);
+
+        // compute the price impact
+        // amount
+
         return (this.afterSwap.selector, 0);
     }
 }
