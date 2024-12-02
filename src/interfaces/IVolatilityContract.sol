@@ -9,6 +9,8 @@ pragma solidity ^0.8.23;
 interface IVolatilityContract {
     function init() external;
 
+    function index() external view returns (uint256);
+
     function lastVolatility() external view returns (uint256);
 
     function setVolatility(uint256 new_volatility) external;
