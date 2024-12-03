@@ -1,3 +1,5 @@
+pragma solidity ^0.8.26;
+
 import {IVolatilityContract} from "../interfaces/IVolatilityContract.sol";
 
 contract VolatilityContract is IVolatilityContract {
@@ -30,5 +32,14 @@ contract VolatilityContract is IVolatilityContract {
             z = (value / z + z) / 2;
         }
         return y;
+    }
+
+    function calculateVolatility() external view override returns (uint256) {
+        uint256 sum = 0;
+        // for (uint256 i = 0; i < swaps.length; i++) {
+        //     sum += swaps[i];
+        // }
+        // return sqrt(sum);
+        return sum;
     }
 }
