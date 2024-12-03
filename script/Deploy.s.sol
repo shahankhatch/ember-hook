@@ -22,6 +22,9 @@ import "./Create2Deployer.sol";
 import {PoolModifyLiquidityTest} from "v4-core/test/PoolModifyLiquidityTest.sol";
 import {PoolSwapTest} from "v4-core/test/PoolSwapTest.sol";
 import {SortTokens} from "lib/v4-periphery/lib/v4-core/test/utils/SortTokens.sol";
+import {IQuoter} from "src/interfaces/IQuoter.sol";
+import {StateLibrary} from "v4-core/libraries/StateLibrary.sol";
+import {IVolatilityContract} from "../src/interfaces/IVolatilityContract.sol";
 
 // forge script script/Deploy.s.sol --private-key 0xb6b15c8cb491557369f3c7d2c287b053eb229daa9c22138887752191c9520659 --rpc-url http://127.0.0.1:8547 --force --broadcast --skip-simulation -vvvvv
 
@@ -30,6 +33,7 @@ import {HookMiner} from "./HookMiner.sol";
 contract Deploy is Script, Deployers {
     using CurrencyLibrary for address;
     using LPFeeLibrary for uint24;
+    using StateLibrary for IPoolManager;
 
     function run() public {
         vm.setEnv(
@@ -68,7 +72,7 @@ contract Deploy is Script, Deployers {
         (currency0, currency1) = SortTokens.sort(token0, token1);
 
         Quoter quoter = new Quoter(address(manager));
-        address volatilityCalculator = 0xA6E41fFD769491a42A6e5Ce453259b93983a22EF; // Replace with real or deploy a mock
+        address volatilityCalculator = 0xA6E41fFD769491a42A6e5Ce453259b93983a22EF;
 
         Create2Deployer create2Deployer = new Create2Deployer();
 
@@ -117,6 +121,8 @@ contract Deploy is Script, Deployers {
         token1.approve(address(modifyLiquidityRouter), 1000 ether);
         token0.approve(address(swapRouter), 1000 ether);
         token1.approve(address(swapRouter), 1000 ether);
+        token0.approve(address(quoter), 1000 ether);
+        token1.approve(address(quoter), 1000 ether);
 
         seedMoreLiquidity(_key, 10 ether, 10 ether);
         // modifyLiquidityRouter.modifyLiquidity(
@@ -136,7 +142,47 @@ contract Deploy is Script, Deployers {
         console.log("Pool initialized");
 
         bool zeroForOne = true;
-        swap(_key, zeroForOne, 1, ZERO_BYTES);
+
+        IQuoter.QuoteExactSingleParams memory p = IQuoter
+            .QuoteExactSingleParams({
+                poolKey: _key,
+                zeroForOne: zeroForOne,
+                recipient: address(this),
+                exactAmount: 1,
+                sqrtPriceLimitX96: Deployers.MIN_PRICE_LIMIT,
+                hookData: ZERO_BYTES
+            });
+        try quoter.quoteExactInputSingle(p) returns (
+            int128[] memory deltaAmounts,
+            uint160 sqrtPriceX96After,
+            uint32 initializedTicksLoaded
+        ) {
+            console.log("quote Success");
+            console.log(deltaAmounts[0]);
+            console.log(deltaAmounts[1]);
+            console.log(sqrtPriceX96After);
+            console.log(initializedTicksLoaded);
+        } catch {
+            console.log("quote Failed");
+        }
+        // IVolatilityContract u = IVolatilityContract(volatilityCalculator);
+
+        // do 100 swaps on the pool
+        for (uint256 i = 0; i < 120; i++) {
+            swap(_key, zeroForOne, 1, ZERO_BYTES);
+            (
+                uint160 sqrtPriceX96last,
+                int24 tick,
+                uint24 protocolFee,
+                uint24 lpFee
+            ) = manager.getSlot0(id);
+            console.log("sqrtPriceX96: ", i, ":", sqrtPriceX96last);
+            // u.index();
+            // uint256 volatility = u.calculateVolatility();
+            // console.log("Volatility: ", i, ":", volatility);
+        }
+
+        // swap(_key, zeroForOne, 1, ZERO_BYTES);
 
         vm.stopBroadcast();
     }
