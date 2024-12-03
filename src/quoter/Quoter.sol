@@ -73,26 +73,16 @@ contract Quoter is IQuoter, IUnlockCallback {
             uint32 initializedTicksLoaded
         )
     {
-        (bool success, bytes memory reason) = address(this).call(
-            abi.encode(this._quoteExactInputSingle.selector, params)
-        );
-        console.log("success", success);
-        console.logBytes(reason);
-        // try
-        //     _quoteExactInputSingle(params)
-        // returns (
-        //     int128[] memory deltaAmounts1,
-        //     uint160 sqrtPriceX96After1,
-        //     uint32 initializedTicksLoaded1
-        // ) {} catch (bytes memory reason) {
-        //     return _handleRevertSingle(reason);
-        // }
-
-        // try manager.unlock(abi.encodeWithSelector(this._quoteExactInputSingle.selector, params)) {}
-        // catch (bytes memory reason) {
-        //     return _handleRevertSingle(reason);
-        // }
-        return _handleRevertSingle(reason);
+        try
+            manager.unlock(
+                abi.encodeWithSelector(
+                    this._quoteExactInputSingle.selector,
+                    params
+                )
+            )
+        {} catch (bytes memory reason) {
+            return _handleRevertSingle(reason);
+        }
     }
 
     /// @inheritdoc IQuoter
