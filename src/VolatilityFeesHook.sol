@@ -103,36 +103,7 @@ contract VolatilityFeesHook is BaseHook {
         returns (bytes4, BeforeSwapDelta, uint24)
     {
         // bool immediate = parseHookData(hookData);
-        // console.log("booo");
-
-        // IQuoter.QuoteExactSingleParams memory p = IQuoter
-        //     .QuoteExactSingleParams(
-        //         key,
-        //         params.zeroForOne,
-        //         address(this),
-        //         uint256(params.amountSpecified),
-        //         params.sqrtPriceLimitX96,
-        //         ""
-        //     );
-        // try quoter.quoteExactInputSingle(p) returns (
-        //     int128[] memory deltaAmounts,
-        //     uint160 sqrtPriceX96After,
-        //     uint32 initializedTicksLoaded
-        // ) {
-        //     console.log("quote Success");
-        //     console.log(deltaAmounts[0]);
-        //     console.log(deltaAmounts[1]);
-        //     console.log(sqrtPriceX96After);
-        //     console.log(initializedTicksLoaded);
-        // } catch {
-        //     console.log("quote Failed");
-        //     // console.log(deltaAmounts[0]);
-        //     // console.log(deltaAmounts[1]);
-        //     // console.log(sqrtPriceX96After);
-        //     // console.log(initializedTicksLoaded);
-        // }
-
-        console.log("boo2");
+        console.log("booo");
 
         // poolManager.getSlot0(key.toId());
         return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
