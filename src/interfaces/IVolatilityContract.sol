@@ -19,5 +19,7 @@ interface IVolatilityContract {
 
     function simulateSwap(uint256 swap) external returns (uint256);
 
+    function calculateVolatility() external returns (uint256);
+
     function sqrt(uint256 value) external view returns (uint256);
 }
