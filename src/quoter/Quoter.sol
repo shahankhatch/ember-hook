@@ -61,6 +61,12 @@ contract Quoter is IQuoter, IUnlockCallback {
         manager = IPoolManager(_poolManager);
     }
 
+    event QuoteEvent(
+        int128[] deltaAmounts,
+        uint160 sqrtPriceX96After,
+        uint32 initializedTicksLoaded
+    );
+
     /// @inheritdoc IQuoter
     function quoteExactInputSingle(
         QuoteExactSingleParams calldata params
@@ -81,7 +87,17 @@ contract Quoter is IQuoter, IUnlockCallback {
                 )
             )
         {} catch (bytes memory reason) {
-            return _handleRevertSingle(reason);
+            (
+                deltaAmounts,
+                sqrtPriceX96After,
+                initializedTicksLoaded
+            ) = _handleRevertSingle(reason);
+            emit QuoteEvent(
+                deltaAmounts,
+                sqrtPriceX96After,
+                initializedTicksLoaded
+            );
+            // return _handleRevertSingle(reason);
         }
     }
 
