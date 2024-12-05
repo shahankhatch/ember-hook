@@ -25,7 +25,6 @@ import {SortTokens} from "lib/v4-periphery/lib/v4-core/test/utils/SortTokens.sol
 import {IQuoter} from "src/interfaces/IQuoter.sol";
 import {StateLibrary} from "v4-core/libraries/StateLibrary.sol";
 import {IVolatilityContract} from "../src/interfaces/IVolatilityContract.sol";
-import {VanityVolatility} from "../src/volatility/VanityVolatility.sol";
 import {TickMath} from "lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 import {Constants} from "lib/v4-periphery/lib/v4-core/test/utils/Constants.sol";
 import {LiquidityAmounts} from "lib/v4-periphery/lib/v4-core/test/utils/LiquidityAmounts.sol";
@@ -320,11 +319,6 @@ contract Deploy is DeployersBase {
         } catch {
             console.log("quote Failed");
         }
-        // IVolatilityContract u = IVolatilityContract(volatilityCalculator);
-        // u.init();
-
-        // VanityVolatility v = new VanityVolatility(address(u));
-        // v.init();
         // // do 100 swaps on the pool
         // for (uint256 i = 0; i < 120; i++) {
         //     swap(_key, zeroForOne, 1, ZERO_BYTES);
