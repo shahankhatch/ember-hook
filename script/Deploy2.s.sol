@@ -220,7 +220,7 @@ contract Deploy is DeployersBase {
 
         (address hookAddress, bytes32 salt) = HookMiner.find(
             address(create2Deployer),
-            Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG,
+            Hooks.AFTER_SWAP_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG,
             type(VolatilityFeesHook).creationCode,
             abi.encode(manager, volatilityCalculator)
         );
