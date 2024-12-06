@@ -80,14 +80,14 @@ contract Deploy is Script, Deployers {
             address(create2Deployer),
             Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG,
             type(VolatilityFeesHook).creationCode,
-            abi.encode(manager, volatilityCalculator, address(quoter))
+            abi.encode(manager, volatilityCalculator)
         );
         console.log("Hook address: ", hookAddress);
         console.logBytes32(salt);
 
         bytes memory codeHashWithConstructorArgs = abi.encodePacked(
             type(VolatilityFeesHook).creationCode,
-            abi.encode(manager, volatilityCalculator, address(quoter))
+            abi.encode(manager, volatilityCalculator)
         );
 
         create2Deployer.deploy(0, salt, codeHashWithConstructorArgs);

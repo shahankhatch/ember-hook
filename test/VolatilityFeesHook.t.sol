@@ -47,11 +47,11 @@ contract TestVolatilityFeesHook is Test, Deployers {
 
         deployCodeTo(
             "VolatilityFeesHook",
-            abi.encode(manager, calculator, quoter),
+            abi.encode(manager, calculator),
             hook_address
         );
         hook = VolatilityFeesHook(hook_address);
-        // VolatilityFeesHook impl = new VolatilityFeesHook(manager, address(calculator), address(quoter));
+        // VolatilityFeesHook impl = new VolatilityFeesHook(manager, address(calculator));
         // vm.etch(address(hooks), address(impl).code);
         console.log("index");
         calculator.init();
