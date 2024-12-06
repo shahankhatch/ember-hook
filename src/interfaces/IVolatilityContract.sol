@@ -13,6 +13,8 @@ interface IVolatilityContract {
 
     function lastVolatility() external view returns (uint256);
 
+    function getVolatility() external view returns (uint256);
+
     function setVolatility(uint256 new_volatility) external;
 
     function addSwap(uint256 swap) external;
