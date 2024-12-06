@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.26;
 
 import {BaseHook} from "v4-periphery/src/base/hooks/BaseHook.sol";
 import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
@@ -23,11 +23,10 @@ import {ProtocolFeeLibrary} from "v4-core/libraries/ProtocolFeeLibrary.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
 import {Slot0} from "v4-core/types/Slot0.sol";
 import {TickBitmap} from "v4-core/libraries/TickBitmap.sol";
-import {CustomRevert} from "v4-core/libraries/CustomRevert.sol";
 import {BitMath} from "v4-core/libraries/BitMath.sol";
 import {SafeCast} from "v4-core/libraries/SafeCast.sol";
 import {StateView} from "v4-periphery/src/lens/StateView.sol";
-import {console} from "forge-std/console.sol";
+// import {console} from "forge-std/console.sol";
 import {Currency, CurrencyLibrary} from "v4-core/types/Currency.sol";
 import {IHooks} from "lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 
@@ -41,22 +40,25 @@ contract VolatilityFeesHook is BaseHook {
     // using BalanceDeltaLibrary for BalanceDelta;
     // using ProtocolFeeLibrary for *;
 
-    uint24 public constant HIGH_VOLATILITY_FEE = 10000; // 1%
-    uint24 public constant MEDIUM_VOLATILITY_FEE = 3000; // 0.3%
-    uint24 public constant LOW_VOLATILITY_FEE = 500; // 0.05%
+    uint24 public constant HIGH_VOLATILITY_FEE = 1000; // 1%
+    uint24 public constant MEDIUM_VOLATILITY_FEE = 300; // 0.3%
+    uint24 public constant LOW_VOLATILITY_FEE = 50; // 0.05%
 
     uint128 public constant TOTAL_BIPS = 10000;
 
     error MustUseDynamicFee();
 
-    IVolatilityContract volatilityContract;
+    // address public immutable volatilityContractAddress;
+    IVolatilityContract public volatilityContract;
 
     // Initialize BaseHook parent contract in the constructor
     constructor(
         IPoolManager _poolManager,
         address volatility_contract_address
     ) BaseHook(_poolManager) {
+        // volatilityContractAddress = volatility_contract_address;
         volatilityContract = IVolatilityContract(volatility_contract_address);
+        volatilityContract.setVolatility(1);
     }
 
     // Required override function for BaseHook to let the PoolManager know which hooks are implemented
@@ -79,35 +81,13 @@ contract VolatilityFeesHook is BaseHook {
                 beforeDonate: false,
                 afterDonate: false,
                 beforeSwapReturnDelta: false,
-                afterSwapReturnDelta: false,
+                afterSwapReturnDelta: true,
                 afterAddLiquidityReturnDelta: false,
                 afterRemoveLiquidityReturnDelta: false
             });
     }
 
-    // function beforeSwap(
-    //     address,
-    //     PoolKey calldata key,
-    //     IPoolManager.SwapParams memory params,
-    //     bytes calldata hookData
-    // )
-    //     external
-    //     override
-    //     onlyPoolManager
-    //     returns (bytes4, BeforeSwapDelta, uint24)
-    // {
-    //     // bool immediate = parseHookData(hookData);
-    //     // console.log("booo");
-    //     // revert("Here we are");
-    //     // poolManager.getSlot0(key.toId());
-    //     return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
-    // }
-
-    // function parseHookData(
-    //     bytes calldata data
-    // ) public pure returns (bool immediate) {
-    //     return abi.decode(data, (bool));
-    // }
+    event Mark(uint256 id);
 
     function afterSwap(
         address,
@@ -116,50 +96,21 @@ contract VolatilityFeesHook is BaseHook {
         BalanceDelta delta,
         bytes calldata /* hookData */
     ) external override onlyPoolManager returns (bytes4, int128) {
-        // user needs to provide volatility calculator address, bool for payImmediately and bool for refundImmediately
-        // (address volatility_contract_address, bool payImmediately, bool refundImmediately) = parseHookData(hookData);
-
-        StateView state = new StateView(poolManager);
-        (
-            uint160 sqrtPriceX96,
-            int24 tick,
-            uint24 protocolFee,
-            uint24 lpFee
-        ) = state.getSlot0(key.toId());
-
         // get current volatility
-        uint256 currentVolatility = volatilityContract.lastVolatility();
-        // compute new volatility after adding swap
-        volatilityContract.addSwap(sqrtPriceX96);
-        uint256 newVolatility = volatilityContract.lastVolatility();
+        volatilityContract.setVolatility(
+            volatilityContract.getVolatility() + 1
+        );
 
         uint256 feeChoice = LOW_VOLATILITY_FEE;
+        uint256 currentVolatility = volatilityContract.getVolatility();
 
-        if (newVolatility > (currentVolatility * 101) / 100) {
-            // charge the user a higher fee for higher volatility
-            // uint256 feeAmount = (uint256(delta.amount0()) *
-            // HIGH_VOLATILITY_FEE) / 10000;
-            // poolManager.take(key.currency0, address(this), feeAmount);
+        if (currentVolatility > 6) {
             feeChoice = HIGH_VOLATILITY_FEE;
-        } else if (
-            newVolatility >= (currentVolatility * 99) / 100 &&
-            newVolatility <= (currentVolatility * 101) / 100
-        ) {
-            // charge the user the regular fee
-            // uint256 feeAmount = (uint256(delta.amount0()) *
-            // MEDIUM_VOLATILITY_FEE) / 10000;
-            // poolManager.take(key.currency0, address(this), feeAmount);
+        } else if (currentVolatility >= 3 && currentVolatility <= 6) {
             feeChoice = MEDIUM_VOLATILITY_FEE;
         }
-        // else {
-        // reduce the fee for low volatility
-        // uint256 feeAmount = (uint256(delta.amount0()) *
-        // LOW_VOLATILITY_FEE) / 10000;
-        // poolManager.take(key.currency0, address(this), feeAmount);
-        // feeChoice = LOW_VOLATILITY_FEE;
-        // }
 
-        // fee will be in the unspecified token of the swap
+        // // fee will be in the unspecified token of the swap
         bool specifiedTokenIs0 = (params.amountSpecified < 0 ==
             params.zeroForOne);
         (Currency feeCurrency, int128 swapAmount) = (specifiedTokenIs0)
@@ -169,8 +120,13 @@ contract VolatilityFeesHook is BaseHook {
         if (swapAmount < 0) swapAmount = -swapAmount;
 
         uint256 feeAmount = (uint128(swapAmount) * feeChoice) / TOTAL_BIPS;
-        poolManager.take(feeCurrency, address(this), feeAmount);
 
-        return (IHooks.afterSwap.selector, feeAmount.toInt128());
+        bool enableFee = false;
+        if (enableFee) {
+            poolManager.take(feeCurrency, address(this), feeAmount);
+            return (IHooks.afterSwap.selector, feeAmount.toInt128());
+        } else {
+            return (IHooks.afterSwap.selector, 0);
+        }
     }
 }
