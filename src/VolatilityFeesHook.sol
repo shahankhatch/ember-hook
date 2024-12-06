@@ -26,23 +26,15 @@ import {TickBitmap} from "v4-core/libraries/TickBitmap.sol";
 import {BitMath} from "v4-core/libraries/BitMath.sol";
 import {SafeCast} from "v4-core/libraries/SafeCast.sol";
 import {StateView} from "v4-periphery/src/lens/StateView.sol";
-// import {console} from "forge-std/console.sol";
 import {Currency, CurrencyLibrary} from "v4-core/types/Currency.sol";
 import {IHooks} from "lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 
 contract VolatilityFeesHook is BaseHook {
-    // using SafeCast for *;
     using SafeCast for uint256;
-    // using SafeCast for int128;
-    // using LPFeeLibrary for uint24;
-    // using PoolIdLibrary for PoolKey;
-    // using StateLibrary for IPoolManager;
-    // using BalanceDeltaLibrary for BalanceDelta;
-    // using ProtocolFeeLibrary for *;
 
-    uint24 public constant HIGH_VOLATILITY_FEE = 1000; // 1%
-    uint24 public constant MEDIUM_VOLATILITY_FEE = 300; // 0.3%
-    uint24 public constant LOW_VOLATILITY_FEE = 50; // 0.05%
+    uint24 public constant HIGH_VOLATILITY_FEE = 1000;
+    uint24 public constant MEDIUM_VOLATILITY_FEE = 300;
+    uint24 public constant LOW_VOLATILITY_FEE = 50;
 
     uint128 public constant TOTAL_BIPS = 10000;
 
