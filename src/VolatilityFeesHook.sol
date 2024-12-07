@@ -79,7 +79,12 @@ contract VolatilityFeesHook is BaseHook {
             });
     }
 
-    event Mark(uint256 id);
+    // adapt for Brevis
+    event LowVolatility(
+        address hook,
+        uint256 beforeVolatility,
+        uint256 afterVolatility
+    );
 
     function afterSwap(
         address,
@@ -98,7 +103,7 @@ contract VolatilityFeesHook is BaseHook {
 
         if (currentVolatility > 6) {
             feeChoice = HIGH_VOLATILITY_FEE;
-        } else if (currentVolatility >= 3 && currentVolatility <= 6) {
+        } else if (4 <= currentVolatility && currentVolatility <= 6) {
             feeChoice = MEDIUM_VOLATILITY_FEE;
         }
 
@@ -113,7 +118,15 @@ contract VolatilityFeesHook is BaseHook {
 
         uint256 feeAmount = (uint128(swapAmount) * feeChoice) / TOTAL_BIPS;
 
-        bool enableFee = false;
+        if (feeChoice == LOW_VOLATILITY_FEE) {
+            emit LowVolatility(
+                address(key.hooks),
+                currentVolatility - 1, // note: we increment the volatility oracle at the start of this function
+                currentVolatility
+            );
+        }
+
+        bool enableFee = true;
         if (enableFee) {
             poolManager.take(feeCurrency, address(this), feeAmount);
             return (IHooks.afterSwap.selector, feeAmount.toInt128());
