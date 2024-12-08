@@ -43,6 +43,23 @@ contract VolatilityFeesHook is BaseHook {
     // address public immutable volatilityContractAddress;
     IVolatilityContract public volatilityContract;
 
+    // // brevis zk
+    address public brevisIntegration;
+    function setBrevisIntegration(address brevis) external {
+        brevisIntegration = brevis;
+    }
+
+    // brevis points
+    uint256 public points = 0;
+    function setPoints(uint256 _points) external {
+        if (msg.sender != brevisIntegration) {
+            revert("Only Brevis can set points");
+        }
+        require(_points <= 100, "Points must be less than or equal to 100");
+
+        points = _points;
+    }
+
     // Initialize BaseHook parent contract in the constructor
     constructor(
         IPoolManager _poolManager,
@@ -117,6 +134,12 @@ contract VolatilityFeesHook is BaseHook {
         if (swapAmount < 0) swapAmount = -swapAmount;
 
         uint256 feeAmount = (uint128(swapAmount) * feeChoice) / TOTAL_BIPS;
+
+        if (points > 0) {
+            // if points are set, we follow with low fees (arbitrarily)
+            feeChoice = LOW_VOLATILITY_FEE;
+            points -= 1;
+        }
 
         if (feeChoice == LOW_VOLATILITY_FEE) {
             emit LowVolatility(
