@@ -16,6 +16,9 @@ docs/
 .history
 
 broadcast/
+
+# build dependencies
 src/brevis/
+src/interfaces/IVolatilityContract.sol
 
 .vscode/
