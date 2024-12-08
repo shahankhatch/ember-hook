@@ -9,7 +9,7 @@ import {PoolKey} from "v4-core/types/PoolKey.sol";
 import {BalanceDelta} from "v4-core/types/BalanceDelta.sol";
 import {LPFeeLibrary} from "v4-core/libraries/LPFeeLibrary.sol";
 import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "v4-core/types/BeforeSwapDelta.sol";
-import {IVolatilityContract} from "./interfaces/IVolatilityContract.sol";
+import {IVolatilityContract} from "../../ember-stylus/target/IVolatilityContract.sol";
 import {StateLibrary} from "v4-core/libraries/StateLibrary.sol";
 import {BalanceDelta, BalanceDeltaLibrary, toBalanceDelta} from "v4-core/types/BalanceDelta.sol";
 import {Pool} from "v4-core/libraries/Pool.sol";
