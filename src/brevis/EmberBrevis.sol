@@ -2,8 +2,8 @@
 pragma solidity ^0.8.18;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-
-import "../../lib/BrevisAppZkOnly.sol";
+import "src/VolatilityFeesHook.sol";
+import "./lib/BrevisAppZkOnly.sol";
 
 contract EmberBrevis is BrevisAppZkOnly, Ownable {
     event EmberLowVolatilityAttested(
@@ -18,6 +18,11 @@ contract EmberBrevis is BrevisAppZkOnly, Ownable {
         address _brevisRequest
     ) BrevisAppZkOnly(_brevisRequest) Ownable(msg.sender) {}
 
+    address public hookAddress;
+    function setHookAddress(address _hookAddress) external {
+        hookAddress = _hookAddress;
+    }
+
     function handleProofResult(
         bytes32 _vkHash,
         bytes calldata _circuitOutput
@@ -26,6 +31,7 @@ contract EmberBrevis is BrevisAppZkOnly, Ownable {
         (uint248 points, uint64 minBlockNum, uint64 maxBlockNum) = decodeOutput(
             _circuitOutput
         );
+        VolatilityFeesHook(hookAddress).setPoints(points);
         emit EmberLowVolatilityAttested(points, minBlockNum, maxBlockNum);
     }
 
