@@ -170,13 +170,13 @@ contract Deploy is Script, Deployers {
         // do 100 swaps on the pool
         for (uint256 i = 0; i < 120; i++) {
             swap(_key, zeroForOne, 1, ZERO_BYTES);
-            (
-                uint160 sqrtPriceX96last,
-                int24 tick,
-                uint24 protocolFee,
-                uint24 lpFee
-            ) = manager.getSlot0(id);
-            console.log("sqrtPriceX96: ", i, ":", sqrtPriceX96last);
+            // (
+            //     uint160 sqrtPriceX96last,
+            //     int24 tick,
+            //     uint24 protocolFee,
+            //     uint24 lpFee
+            // ) = manager.getSlot0(id);
+            // console.log("sqrtPriceX96: ", i, ":", sqrtPriceX96last);
             // u.index();
             // uint256 volatility = u.calculateVolatility();
             // console.log("Volatility: ", i, ":", volatility);
